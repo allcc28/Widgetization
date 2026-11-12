@@ -29,7 +29,7 @@ where editing one widget regenerates only its dependent nodes via an LLM.
 
 ## Status
 
-Stack: Vite + React + TypeScript (strict), Vitest. Needs Node (`brew install node`).
+Stack: Vite + React + TypeScript (strict), Vitest. Needs Node (`brew install node`). The backend is TypeScript on Node as well, so it can import `src/shared/`.
 
 ```
 npm install        # once

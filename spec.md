@@ -368,7 +368,7 @@ Everyone writes the paper section closest to their work.
 
 ## 12. Open questions
 
-- Tech stack (TypeScript/React assumed, not decided).
+- Tech stack: decided. TypeScript (strict) + React + Vite + Vitest on Node; the backend is TypeScript on Node too so it can import the shared modules in `src/shared/` (one copy of the logic; types as the contract). The reasons are in `NOTICE.md`.
 - Exact model and hosting (proposal mentions open-source models via Groq).
 - Baseline prompt: proposed to be the preservation-instructed one (stretch 1), pending
   agreement of Roles II-IV. Baseline highlighting: default is on in both conditions; revertible via `HIGHLIGHT_CHANGES_IN_BASELINE`.

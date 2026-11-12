@@ -126,6 +126,35 @@ The single source for types is `src/shared/types.ts`. Do not redefine them elsew
 Commands (`brew install node` first): `npm install`, `npm run dev`, `npm test`,
 `npm run typecheck`, `npm run build`.
 
+**Language and stack: everything is TypeScript** (strict mode), with React and Vite for the UI and
+Vitest for tests, and Node to run it. The backend should be **TypeScript on Node too**, not Python:
+`affectedSet`, `isEditAllowed`, `withDerived` (all the arithmetic) and the quest checks are pure
+TypeScript modules in `src/shared/`, and both the UI and your validator must call the *same*
+code, so they cannot disagree about the dependency graph or the numbers. A Python backend would
+have to re-implement them and keep them in sync by hand. If you strongly prefer another language,
+tell me first.
+
+**Why I chose TypeScript** (my choice as Role I; tell me if you see it differently):
+1. **One language, one copy of the logic.** The UI and the backend validator import the same
+   modules (the dependency graph, the arithmetic, the quest checks), so there is a single source
+   of truth instead of two implementations to keep in sync. This is the main reason.
+2. **The types are the contract.** `src/shared/types.ts` is the data format. `Edit` is a union
+   so a value always matches its parameter; maps over the 8 classes, the error codes and the
+   portraits are exhaustive, so forgetting one is a compile error, not a bug found in the study.
+   That is exactly what a team of three changing the same format needs.
+3. **Safer handling of model output.** The model returns JSON that we must validate. Having the
+   expected shape as a type (and later a schema derived from it) makes the validation code
+   shorter and harder to get wrong.
+4. **The UI needs it anyway.** React and Vite are JavaScript tools; keeping the rest in the same
+   language avoids a second toolchain, a second test runner and a second package manager.
+5. **Small project, short time.** A few API calls to a hosted model (Groq) need no Python machine-learning
+   library, so Python's main advantage does not apply here, and one language lowers the cost of
+   any of us reading or fixing another's code.
+
+The honest trade-off: if a teammate is much more fluent in Python, TypeScript costs them some
+time at the start. The shared modules are small and heavily tested (`npm test`), and the types
+catch most mistakes early, which should make it quicker to pick up.
+
 **About `http://localhost:5173/`:** `localhost` means *your own computer*. It only works after you
 run `npm run dev` yourself, and it is not a shared link: nobody else can open the page running on
 your machine. The terminal prints the real address; if port 5173 is busy it picks the next free
