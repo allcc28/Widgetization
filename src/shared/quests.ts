@@ -16,7 +16,7 @@ export const FREE_PLAY: Quest = {
 const siege: Quest = {
   id: "siege",
   title: "Siege of Blackrock Keep",
-  brief: "The keep's gates will not hold. You need two heavy front-liners and enough armour to survive the first volley.",
+  brief: "The keep's gates will not hold. You need two tanks (Paladin, Berserker) and enough armour to survive the first volley.",
   requirements: [
     { kind: "roleCount", role: "Tank", min: 2 },
     { kind: "minDefense", value: 24 },
@@ -25,7 +25,7 @@ const siege: Quest = {
 const plague: Quest = {
   id: "plague",
   title: "The Plague Village",
-  brief: "The villagers need healers and calm. Two supports are required, and no Berserker: they frighten the sick.",
+  brief: "The villagers need healers and calm. Two supports (Cleric, Bard, Druid) are required, and no Berserker: they frighten the sick.",
   requirements: [
     { kind: "roleCount", role: "Support", min: 2 },
     { kind: "exclude", cls: "Berserker" },
@@ -34,7 +34,7 @@ const plague: Quest = {
 const dragon: Quest = {
   id: "dragon",
   title: "The Dragon's Hoard",
-  brief: "Strike fast before the dragon wakes: two damage dealers and a heavy opening volley.",
+  brief: "Strike fast before the dragon wakes: two damage heroes (Ranger, Mage, Rogue) and a heavy opening volley.",
   requirements: [
     { kind: "roleCount", role: "Damage", min: 2 },
     { kind: "minAttack", value: 26 },
@@ -61,7 +61,7 @@ const wood: Quest = {
 const council: Quest = {
   id: "council",
   title: "The Council of Elders",
-  brief: "Words win this fight. The council wants a Bard, and at least two supports to keep the peace.",
+  brief: "Words win this fight. The council wants a Bard, and at least two supports (Cleric, Bard, Druid) to keep the peace.",
   requirements: [
     { kind: "include", cls: "Bard" },
     { kind: "roleCount", role: "Support", min: 2 },

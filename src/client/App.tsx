@@ -17,6 +17,7 @@ import {
 } from "../shared/types";
 import { CharacterCard } from "./components/CharacterCard";
 import { OverviewCard } from "./components/OverviewCard";
+import { HeroRoster } from "./components/HeroRoster";
 import { QuestPanel } from "./components/QuestPanel";
 import { Scenery } from "./components/Scenery";
 import {
@@ -260,6 +261,8 @@ export function App() {
         busy={pending !== null || updating}
         onFinish={finishTask}
       />
+
+      <HeroRoster party={CARD_IDS.map((id) => ({ id, cls: draft.nodes[id].params.cls }))} />
 
       <section className="grid">
         {CARD_IDS.map((id) => {

@@ -27,6 +27,10 @@ heroes until every requirement has a tick, then press **Finish task**.
 | Gear | The hero's equipment | worn, standard, fine |
 
 ### The heroes
+A **Heroes** panel under the quest always shows all eight heroes grouped by role, with the ones
+already in your party greyed out and marked with their slot. It is for reference only. You pick
+heroes on the cards, where each portrait also shows its role.
+
 
 | Hero | Class | Role |
 |---|---|---|

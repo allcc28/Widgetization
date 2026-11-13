@@ -15,6 +15,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { useCardPresence } from "../useCardPresence";
 import { FromTo } from "./FromTo";
 import { HERO_NAME } from "../../shared/heroes";
+import { ROLE_OF_CLASS } from "../../shared/derived";
 import { CLASS_PORTRAITS } from "../portraits";
 import { ChipsDiff, TextDiff } from "./TextDiff";
 
@@ -142,7 +143,7 @@ export function CharacterCard({
               return (
                 <label
                   key={cls}
-                  title={`${HERO_NAME[cls]} · ${cls}${taken ? " (in the party)" : ""}`}
+                  title={`${HERO_NAME[cls]} · ${cls} · ${ROLE_OF_CLASS[cls]}${taken ? " (in the party)" : ""}`}
                   className={cx("hero", selected && "hero--on", taken && "hero--taken")}
                 >
                   <input
@@ -151,10 +152,13 @@ export function CharacterCard({
                     name={`${id}-hero`}
                     checked={selected}
                     disabled={locked("cls") || taken}
-                    aria-label={`${HERO_NAME[cls]}, ${cls}${taken ? " (already in the party)" : ""}`}
+                    aria-label={`${HERO_NAME[cls]}, ${cls}, ${ROLE_OF_CLASS[cls]}${taken ? " (already in the party)" : ""}`}
                     onChange={() => onEdit({ cardId: id, param: "cls", value: cls })}
                   />
                   <img src={CLASS_PORTRAITS[cls]} alt="" />
+                  <span className="hero__role" aria-hidden="true">
+                    {ROLE_OF_CLASS[cls]}
+                  </span>
                 </label>
               );
             })}
