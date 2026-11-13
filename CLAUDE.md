@@ -42,11 +42,12 @@ npm run build      # typecheck + production build
 Layout:
 
 - `src/shared/`: `types.ts` (contracts), `dependencies.ts` (`affectedSet`, `explainAffected`), `diff.ts`, `textDiff.ts`, `derived.ts`, `applyParam.ts` (`isEditAllowed`), `heroes.ts`, `quests.ts`, `session.ts`, `sampleState.ts`. Pure, no UI/network imports.
-- `src/backend/fakeApi.ts`: FAKE `applyEdit`/`regenerateAll`/`undo` with the contract's signatures, for UI development. The real module replaces it; the UI must not change.
+- `src/backend/fakeApi.ts`: FAKE `applyEdit`/`regenerateAll`/`undo` with the contract's signatures, for UI development. The UI still imports it until the swap to `api.ts` (one import line in `App.tsx`).
+- `src/backend/api.ts` (Role III): real `applyEdit`/`regenerateAll`/`undo`/`canUndo`/`resetHistory`, same signatures, plus `setModel(fn, timeoutMs)` for Role II's model. One retry, per-attempt timeout, atomic commit, original state on failure. `validate.ts`: `parseOutput` (only schema-dependent part, temporary shape until Role II's schema) and `checkOutput` (contract rules). `devModel.ts`: stand-in model until Role II's lands.
 - `src/client/`: React UI (cards, hero picker and widgets, quest panel, scope preview with reasons, Apply, undo, error bar, red/green text diff, dark-fantasy theme with `Scenery.tsx`, both conditions via `?condition=baseline|bounded&participant=P01&task=t1|t2`), `AdminPanel.tsx` (`?admin`, researcher setup page), `logger.ts` (stub) and `condition.ts`.
 - `tests/`: Vitest tests.
 
-Not built yet: the real LLM backend and validation (Roles II/III), the Groq proxy server and `POST /api/log`, and the real logger (Role IV).
+Not built yet: the real LLM model adapter, prompts and output schema (Role II), the Groq proxy server and `POST /api/log`, and the real logger (Role IV).
 
 Integration notes:
 
