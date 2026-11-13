@@ -48,6 +48,10 @@ Layout:
 
 Not built yet: the real LLM backend and validation (Roles II/III), the Groq proxy server and `POST /api/log`, and the real logger (Role IV).
 
+Integration notes:
+
+- **Role II:** The model adapter must forward the provided `AbortSignal` to its underlying API/fetch request so timed-out calls are actually cancelled rather than continuing to consume resources.
+
 ## LaTeX
 
 `proposal.tex` builds with `latexmk -pdf proposal.tex`. The two font lines near the top
