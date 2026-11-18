@@ -9,10 +9,11 @@ import { NODE_IDS, type Condition, type Edit, type NodeId, type State, type Upda
 import { devModel } from "./devModel";
 import { checkOutput, parseOutput, type Content } from "./validate";
 
-/** `state` is the post-edit state (new params, old content, recomputed derived); `ids` are the nodes to return. */
+/** `state` is the post-edit state (new params, old content, recomputed derived); `before` is the state before the edit; `ids` are the nodes to return. */
 export interface ModelRequest {
   mode: Condition;
   state: State;
+  before: State;
   edit: Edit;
   ids: NodeId[];
 }
@@ -70,8 +71,8 @@ async function run(mode: Condition, state: State, edit: Edit): Promise<UpdateRes
   const ids = mode === "bounded" ? affected : [...NODE_IDS];
   let error!: UpdateError;
   for (let i = 0; i < ATTEMPTS; i++) {
-    // A clone, so a misbehaving model client cannot mutate the caller's state.
-    const raw = await callModel({ mode, state: structuredClone(expected), edit, ids });
+    // Clones, so a misbehaving model client cannot mutate the caller's state.
+    const raw = await callModel({ mode, state: structuredClone(expected), before: structuredClone(state), edit, ids });
     const parsed = typeof raw === "string" ? parseOutput(raw) : { ok: false as const, error: raw };
     const checked = parsed.ok ? checkOutput(parsed.value, { expected, ids }) : parsed;
     if (checked.ok) {

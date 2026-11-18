@@ -24,11 +24,24 @@ interface Props {
   previous: OverviewNode | null;
   /** Why this card is or is not in the closure (shown while an edit is pending). */
   reason: string | null;
+  /** Why this card was rewritten by the last Apply (shown while changes are highlighted). */
+  attribution: string | null;
   /** Baseline with a pending edit: the whole party may change. */
   maybe: boolean;
 }
 
-export function OverviewCard({ node, saved, cards, affected, updating, changedFields, previous, reason, maybe }: Props) {
+export function OverviewCard({
+  node,
+  saved,
+  cards,
+  affected,
+  updating,
+  changedFields,
+  previous,
+  reason,
+  attribution,
+  maybe,
+}: Props) {
   const presence = useCardPresence("overview");
   const d = node.derived;
   const s = saved.derived;
@@ -72,6 +85,7 @@ export function OverviewCard({ node, saved, cards, affected, updating, changedFi
         </header>
 
         {reason && <p className="why">{reason}</p>}
+        {attribution && <p className="why why--done">{attribution}</p>}
 
         <p className="rating-line">
           Rating{" "}

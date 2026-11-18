@@ -20,6 +20,14 @@ function localGenerationApi(): Plugin {
           return;
         }
 
+        const controller = new AbortController();
+        const cancel = () => controller.abort();
+        const onClose = () => {
+          if (!res.writableEnded) cancel();
+        };
+        req.once("aborted", cancel);
+        res.once("close", onClose);
+
         try {
           req.setEncoding("utf8");
           let body = "";
@@ -44,19 +52,24 @@ function localGenerationApi(): Plugin {
             return;
           }
 
-          const result = await generateContent(input as GenerationRequest);
+          const result = await generateContent(input as GenerationRequest, controller.signal);
+          if (controller.signal.aborted || res.destroyed) return;
           res.statusCode = result.ok ? 200
             : result.error.code === "INVALID_EDIT" ? 400
             : result.error.code === "TIMEOUT" ? 504
             : 502;
           res.end(JSON.stringify(result));
         } catch (error) {
+          if (controller.signal.aborted || res.destroyed) return;
           res.statusCode = error instanceof SyntaxError ? 400 : 500;
           res.end(JSON.stringify({
             error: error instanceof SyntaxError
               ? "Invalid JSON request."
               : "Generation request failed.",
           }));
+        } finally {
+          req.off("aborted", cancel);
+          res.off("close", onClose);
         }
       });
     },

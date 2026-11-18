@@ -61,8 +61,9 @@ function validate(value: unknown, ids: readonly NodeId[]): GenerationResult {
   return { ok: true, nodes };
 }
 
-async function attempt(messages: ReturnType<typeof buildMessages>, ids: readonly NodeId[]): Promise<GenerationResult> {
-  const signal = AbortSignal.timeout(60000);
+async function attempt(messages: ReturnType<typeof buildMessages>, ids: readonly NodeId[], callerSignal?: AbortSignal): Promise<GenerationResult> {
+  const deadline = AbortSignal.timeout(60000);
+  const signal = callerSignal ? AbortSignal.any([callerSignal, deadline]) : deadline;
   try {
     const response = await fetch("http://127.0.0.1:11434/api/chat", {
       method: "POST",
@@ -80,6 +81,7 @@ async function attempt(messages: ReturnType<typeof buildMessages>, ids: readonly
     }
     return validate(JSON.parse(envelope.message.content), ids);
   } catch (error) {
+    if (callerSignal?.aborted) throw callerSignal.reason ?? new DOMException("Request cancelled", "AbortError");
     if (signal.aborted) return failure("TIMEOUT", "Ollama took longer than 60 seconds.");
     if (error instanceof SyntaxError) return failure("INVALID_JSON", "Ollama returned invalid JSON.");
     return failure("MODEL_ERROR", "Could not reach the local Ollama server.");
@@ -96,8 +98,8 @@ function invalidIdentity(story: string, abilities: string[], name: string, cls: 
   return abilities.some(value => ROLES.some(role => role.toLowerCase() === value.trim().toLowerCase()));
 }
 
-/** Pass committed state. This client owns the single retry and returns validated content. */
-export async function generateContent(request: GenerationRequest): Promise<GenerationResult> {
+/** Pass committed state. Makes one model call. The Role III backend owns retries. */
+export async function generateContent(request: GenerationRequest, signal?: AbortSignal): Promise<GenerationResult> {
   let messages: ReturnType<typeof buildMessages>;
   try {
     messages = buildMessages(request);
@@ -118,12 +120,9 @@ export async function generateContent(request: GenerationRequest): Promise<Gener
     && request.edit.value !== request.state.nodes[request.edit.cardId].params.power
     ? request.edit : null;
 
-  for (let pass = 0; pass < 2; pass++) {
-    const result = await attempt(messages, ids);
-    if (!result.ok) {
-      if (pass === 1) return result;
-      continue;
-    }
+  {
+    const result = await attempt(messages, ids, signal);
+    if (!result.ok) return result;
     if (swap) {
       const id = swap.cardId;
       const name = HERO_NAME[swap.value];
@@ -143,15 +142,7 @@ export async function generateContent(request: GenerationRequest): Promise<Gener
       };
       if (usable(result.nodes[id])) return result;
       const rejected = () => failure("MODEL_ERROR", "The replacement hero has stale, borrowed, or inconsistent content.");
-      if (pass === 1) return rejected();
-      const repair = await attempt([
-        { role: "system", content: "Write one original tabletop RPG hero card in English. Return the JSON required by the schema." },
-        { role: "user", content: `Create ${id} for ${name}, a ${swap.value}. Write a sentence about a past event involving ${name}, and invent two distinct ability names for this class. Temperament: ${request.state.nodes[id].params.temperament}. Gear: ${request.state.nodes[id].params.gear}. Quest: ${request.state.quest.title}.` },
-      ], [id]);
-      if (!repair.ok) return repair;
-      const replacement = repair.nodes[id];
-      if (!replacement || !usable(replacement)) return rejected();
-      return { ok: true, nodes: { ...result.nodes, [id]: replacement } };
+      return rejected();
     }
     if (!powerEdit) return result;
     const oldCard = request.state.nodes[powerEdit.cardId];
@@ -164,11 +155,7 @@ export async function generateContent(request: GenerationRequest): Promise<Gener
     });
     if (generated && !borrowed &&
         !invalidIdentity(generated.backstory, generated.abilities, oldCard.derived.name, oldCard.params.cls)) return result;
-    if (pass === 0) {
-      // Keep the original party context when correcting a rejected identity.
-      messages.push({ role: "user", content:
-        `Main character: ${oldCard.derived.name}, ${oldCard.params.cls}, role ${oldCard.derived.role}. Keep their ability list: ${oldCard.content.abilities.join(", ")}. Describe a combat action. ${oldCard.derived.name}'s power changed from ${oldCard.params.power} to ${powerEdit.value}. Write a specific new action for this hero and a teammate's response in the overview. Return all requested nodes as JSON.` });
-    }
+
   }
   return failure("MODEL_ERROR", "Power edit failed: generated content conflicts with the edited hero identity or copies a teammate.");
 }

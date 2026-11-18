@@ -147,6 +147,8 @@ export type LogEventBody =
       offScope: NodeId[];
       errorCode?: ErrorCode;
     }
-  | { type: "undo_click" };
+  | { type: "undo_click" }
+  /** A "best party so far" entry was restored (frontend only; no model call). */
+  | { type: "restore_best"; rating: Rating; requirementsMet: number };
 
 export type LogEvent = LogSession & { timestamp: number } & LogEventBody;

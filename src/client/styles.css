@@ -89,6 +89,7 @@ h3,
 }
 
 .page {
+  position: relative; /* the scope link overlay is positioned against it */
   max-width: 1080px;
   margin: 0 auto;
   padding: 40px 16px 72px;
@@ -689,6 +690,12 @@ h3,
 
 .overview__body .why {
   text-align: left;
+}
+
+/* After an Apply: why this card was rewritten. Same slot as the preview reason, green like the diff. */
+.why--done {
+  color: var(--add);
+  font-style: normal;
 }
 
 .tag--changed {
@@ -1347,7 +1354,8 @@ select:disabled {
   position: relative;
 }
 
-.hero__role {
+/* The hero's name on the picker thumbnail; the role is in the border colour, the tooltip and the aria-label. */
+.hero__name {
   position: absolute;
   left: 0;
   right: 0;
@@ -1358,4 +1366,157 @@ select:disabled {
   letter-spacing: 0.04em;
   color: var(--text);
   background: rgba(7, 9, 15, 0.78);
+}
+
+/* Scope link: the edited card -> overview edge, drawn over the page. Dashed = preview, solid = applied. */
+.links {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.links svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.links__line {
+  fill: none;
+  stroke: var(--accent-bright);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+
+.links__head,
+.links__dot {
+  fill: var(--accent-bright);
+}
+
+.links--preview .links__line {
+  stroke-dasharray: 6 6;
+  animation: links-flow 700ms linear infinite;
+}
+
+.links--done .links__line {
+  stroke: var(--add);
+  filter: drop-shadow(0 0 6px var(--add));
+}
+
+.links--done .links__head,
+.links--done .links__dot {
+  fill: var(--add);
+}
+
+.links__label {
+  position: absolute;
+  transform: translateY(-50%);
+  padding: 1px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: var(--accent-bright);
+  background: rgba(13, 15, 23, 0.92);
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+}
+
+.links--done .links__label {
+  color: var(--add);
+  border-color: var(--add);
+}
+
+@keyframes links-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+/* Best party so far: the highest-rated parties of the session, each restorable */
+.best {
+  display: grid;
+  grid-template-columns: minmax(200px, 1fr) 1.6fr;
+  gap: 8px 24px;
+  align-items: center;
+  padding: 12px 20px;
+  background: var(--panel);
+  border: 1px solid rgba(220, 184, 103, 0.45);
+  border-radius: 14px;
+}
+
+.best__title {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #dcb867;
+}
+
+.best__hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.best__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bestp {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 6px 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-2);
+}
+
+.bestp--current {
+  border-color: rgba(220, 184, 103, 0.6);
+}
+
+.bestp__rating {
+  min-width: 1.6em;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  color: #f6e1a8;
+  text-align: center;
+}
+
+.bestp__names {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.bestp__stats {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn--small {
+  padding: 4px 12px;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 720px) {
+  .best {
+    grid-template-columns: 1fr;
+  }
+  .bestp__stats {
+    display: none;
+  }
 }

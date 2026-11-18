@@ -46,33 +46,48 @@ function envelope(content: string) {
   return Response.json({ message: { content } });
 }
 
-it("recovers from invalid JSON with exactly one retry", async () => {
+it("returns invalid JSON without consuming a second response", async () => {
   const nodes = Object.fromEntries(NODE_IDS.map(id => [id, { content: sampleState.nodes[id].content }]));
   const send = mockFetch()
     .mockResolvedValueOnce(envelope("{"))
     .mockResolvedValueOnce(envelope(JSON.stringify({ nodes })));
-  expect(await generateContent(initialRequest())).toEqual({ ok: true, nodes });
-  expect(send).toHaveBeenCalledTimes(2);
+  expect(await generateContent(initialRequest())).toMatchObject({ ok: false, error: { code: "INVALID_JSON" } });
+  expect(send).toHaveBeenCalledTimes(1);
 });
 
-it("returns INVALID_JSON after two malformed responses", async () => {
+it("returns INVALID_JSON after one malformed response", async () => {
   const send = mockFetch().mockImplementation(async () => envelope("{"));
   expect(await generateContent(initialRequest())).toMatchObject({ ok: false, error: { code: "INVALID_JSON" } });
-  expect(send).toHaveBeenCalledTimes(2);
+  expect(send).toHaveBeenCalledTimes(1);
 });
 
-it("returns TIMEOUT after both requests reach their deadline", async () => {
+it("returns TIMEOUT after the request reaches its deadline", async () => {
   vi.spyOn(AbortSignal, "timeout").mockImplementation(() => AbortSignal.abort(new DOMException("Deadline reached", "TimeoutError")));
   const send = mockFetch().mockImplementation(async (_url, options) => {
     options?.signal?.throwIfAborted();
     throw new Error("Expected the client to forward the timeout signal");
   });
   expect(await generateContent(initialRequest())).toMatchObject({ ok: false, error: { code: "TIMEOUT" } });
-  expect(send).toHaveBeenCalledTimes(2);
+  expect(send).toHaveBeenCalledTimes(1);
 });
 
-it("returns MODEL_ERROR after two HTTP failures", async () => {
+it("returns MODEL_ERROR after one HTTP failure", async () => {
   const send = mockFetch().mockImplementation(async () => new Response(null, { status: 503 }));
   expect(await generateContent(initialRequest())).toMatchObject({ ok: false, error: { code: "MODEL_ERROR" } });
-  expect(send).toHaveBeenCalledTimes(2);
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+it("forwards caller cancellation to the Ollama request", async () => {
+  const controller = new AbortController();
+  const send = mockFetch().mockImplementation(async (_url, options) => {
+    const signal = options?.signal;
+    if (!signal) throw new Error("Missing signal");
+    expect(signal.aborted).toBe(false);
+    controller.abort();
+    expect(signal.aborted).toBe(true);
+    signal.throwIfAborted();
+    throw new Error("Cancellation was ignored");
+  });
+  await expect(generateContent(initialRequest(), controller.signal)).rejects.toMatchObject({ name: "AbortError" });
+  expect(send).toHaveBeenCalledTimes(1);
 });

@@ -1,3 +1,7 @@
+﻿import { setModel } from "../backend/api";
+import { ollamaModel } from "../backend/ollamaAdapter";
+
+setModel(ollamaModel, 60_000);
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { AdminPanel } from "./AdminPanel";
@@ -12,3 +16,4 @@ createRoot(document.getElementById("root")!).render(
     {isAdmin() ? <AdminPanel /> : <App />}
   </StrictMode>,
 );
+
