@@ -10,7 +10,7 @@ import { answer, tweak } from "./scriptedModel";
 const edit: Edit = { cardId: "card_2", param: "power", value: 4 };
 const expected = withDerived(applyParam(sampleState, edit));
 const ids = affectedSet(edit); // card_2, overview
-const req = { mode: "bounded" as const, state: expected, edit, ids };
+const req = { mode: "bounded" as const, state: expected, before: sampleState, edit, ids };
 
 function validate(raw: string) {
   const p = parseOutput(raw);
