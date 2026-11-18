@@ -106,6 +106,32 @@ describe("applyEdit (bounded)", () => {
     expect(r.ok).toBe(true);
     expect(sampleState).toEqual(before);
   });
+
+  it("sends the model the pre-edit state as `before` and the post-edit state as `state`", async () => {
+    const m = use(answer);
+    await applyEdit(sampleState, edit);
+    const req = m.calls[0]!;
+    expect(req.before).toEqual(sampleState);
+    expect(req.before.nodes.card_2.params.power).toBe(7);
+    expect(req.state.nodes.card_2.params.power).toBe(4);
+    expect(req.state.nodes.overview.derived.totalPower).toBe(15);
+    expect(req.state.nodes.card_2.content).toEqual(sampleState.nodes.card_2.content); // old content
+  });
+
+  it("a model client mutating `before` does not touch the caller's state", async () => {
+    const snapshot = structuredClone(sampleState);
+    use((req) => {
+      req.before.nodes.card_2.params.power = 1;
+      return answer(req);
+    });
+    expect((await applyEdit(sampleState, edit)).ok).toBe(true);
+    expect(sampleState).toEqual(snapshot);
+  });
+
+  it("accepts a 60 s timeout for Ollama via setModel", async () => {
+    setModel(async (req) => answer(req), 60_000);
+    expect((await applyEdit(sampleState, edit)).ok).toBe(true);
+  });
 });
 
 describe("regenerateAll (baseline)", () => {
