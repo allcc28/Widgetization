@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { applyEdit, canUndo, regenerateAll, undo } from "../backend/api";
 import { applyParam } from "../shared/applyParam";
 import { affectedSet, explainAffected } from "../shared/dependencies";
@@ -33,14 +33,14 @@ import {
 import { logEvent, setSession } from "./logger";
 
 const ERROR_TEXT: Record<ErrorCode, string> = {
-  MODEL_ERROR: "Couldnâ€™t reach the model.",
+  MODEL_ERROR: "Couldn’t reach the model.",
   TIMEOUT: "The model took too long to answer.",
-  INVALID_JSON: "The modelâ€™s answer was malformed.",
-  SCHEMA_MISMATCH: "The modelâ€™s answer was malformed.",
+  INVALID_JSON: "The model’s answer was malformed.",
+  SCHEMA_MISMATCH: "The model’s answer was malformed.",
   OFF_SCOPE_ID: "The model tried to change something outside the affected parts.",
-  PARAM_MISMATCH: "The modelâ€™s answer didnâ€™t match your settings.",
-  OUT_OF_RANGE: "The modelâ€™s answer had an out-of-range value.",
-  INVALID_EDIT: "That change isnâ€™t allowed (a hero can appear only once in the party).",
+  PARAM_MISMATCH: "The model’s answer didn’t match your settings.",
+  OUT_OF_RANGE: "The model’s answer had an out-of-range value.",
+  INVALID_EDIT: "That change isn’t allowed (a hero can appear only once in the party).",
 };
 
 function listNames(names: string[]): string {
@@ -214,7 +214,7 @@ export function App() {
     if (!pending) return null;
     if (!bounded) return "The whole party is regenerated, so anything here may change.";
     const why = whyById?.get(id);
-    if (!why) return "Doesnâ€™t depend on this edit.";
+    if (!why) return "Doesn’t depend on this edit.";
     return why.kind === "edited"
       ? "This is the card you are editing."
       : `Reads ${labelOf(committed, why.from)}, which is changing.`;
@@ -224,7 +224,7 @@ export function App() {
 
   const summary = pending
     ? bounded
-      ? `Changing ${labelOf(committed, pending.cardId)}â€™s ${PARAM_LABEL[pending.param]} will update ${listNames(
+      ? `Changing ${labelOf(committed, pending.cardId)}’s ${PARAM_LABEL[pending.param]} will update ${listNames(
           affected.map((id) => labelOf(committed, id)),
         )}.`
       : "Applying regenerates the whole party, so any part may change."
@@ -292,7 +292,7 @@ export function App() {
             onClick={apply}
             disabled={!pending || updating}
           >
-            {updating ? "Applyingâ€¦" : error ? "Retry" : "Apply"}
+            {updating ? "Applying…" : error ? "Retry" : "Apply"}
           </button>
         </div>
       </section>
@@ -380,4 +380,3 @@ export function App() {
     </>
   );
 }
-

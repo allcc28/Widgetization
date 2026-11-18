@@ -29,7 +29,8 @@ heroes until every requirement has a tick, then press **Finish task**.
 ### The heroes
 A **Heroes** panel under the quest always shows all eight heroes grouped by role, with the ones
 already in your party greyed out and marked with their slot. It is for reference only. You pick
-heroes on the cards, where each portrait also shows its role.
+heroes on the cards, where each portrait is labelled with the hero's name (hover for class and
+role).
 
 
 | Hero | Class | Role |
@@ -46,14 +47,20 @@ heroes on the cards, where each portrait also shows its role.
 ### Taking a turn
 1. **Change one control.** The page shows what *would* change before anything happens: the
    cards that will be updated are outlined, and each card says why ("This is the card you are
-   editing", "Reads Brann, which is changing", "Doesn't depend on this edit").
+   editing", "Reads Brann, which is changing", "Doesn't depend on this edit"). A dashed arrow
+   runs from the card you are editing into the overview, labelled "reads Brann".
 2. **Look at the numbers.** Attack, Defense, the rating and the quest ticks update at once while
    you drag, because they are simple sums (see below). Nothing has been rewritten yet.
 3. **Press Apply** to commit the change, or **Cancel** to drop it. Only one change can wait at
    a time.
 4. **See what changed.** After Apply, new text is underlined in green and removed text is struck
    through in red; cards that did not change say "Unchanged". "Hide changes" shows the plain text.
+   Each rewritten card also says why: "Updated because you changed Brann's power from 7 to 3",
+   and the overview "Updated because it reads Brann: …". The arrow turns solid.
 5. **Undo** goes back one step if you do not like the result.
+6. **Best party so far.** A small block under the quest remembers the best party you have had
+   (best rating first, then most requirements met; ties are all kept, up to three). **Restore**
+   brings one back, heroes and text alike, without any rewriting. Undo reverses a restore.
 
 If an update fails, you see a message, nothing is changed, and you can retry or cancel.
 

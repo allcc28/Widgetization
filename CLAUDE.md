@@ -7,6 +7,7 @@ where editing one widget regenerates only its dependent nodes via an LLM.
 
 - `RULES.md`: what the demo is, written like board-game rules (part 1 for players and study participants, part 2 for the team). Keep it in sync when scoring, parameters, heroes or quests change.
 - `spec.md`: engineering spec (data model, dependency graph, update flow, interfaces, logging, roles). Follow it.
+- `DESIGN_RATIONALE.md`: which theory guides the interaction (Norman's two gulfs), the design goals, how each maps to the demo (built vs planned), and the evaluation plan. For writing the report; keep its status column in sync with what is built.
 - `CREDITS.md`: attribution and terms for the portraits (WarheadDnC, itch.io; the pack is silent on redistribution, so keep the repo private). Keep it and the page footer in sync if a portrait changes.
 - `NOTICE.md`: what each teammate must know, by role: improvements made while building (data-format changes to follow), what exists, what is not implemented, and (section 8) how the demo differs from `proposal.tex` and why.
 - `contracts.md`: detailed state format, function semantics (`applyEdit`, `regenerateAll`, undo) and log events. Draft until Roles II-IV sign off.
@@ -44,7 +45,7 @@ Layout:
 - `src/shared/`: `types.ts` (contracts), `dependencies.ts` (`affectedSet`, `explainAffected`), `diff.ts`, `textDiff.ts`, `derived.ts`, `applyParam.ts` (`isEditAllowed`), `heroes.ts`, `quests.ts`, `session.ts`, `sampleState.ts`. Pure, no UI/network imports.
 - `src/backend/fakeApi.ts`: FAKE `applyEdit`/`regenerateAll`/`undo` with the contract's signatures, for UI development. The UI still imports it until the swap to `api.ts` (one import line in `App.tsx`).
 - `src/backend/api.ts` (Role III): real `applyEdit`/`regenerateAll`/`undo`/`canUndo`/`resetHistory`, same signatures, plus `setModel(fn, timeoutMs)` for Role II's model. One retry, per-attempt timeout, atomic commit, original state on failure. `validate.ts`: `parseOutput` (only schema-dependent part, temporary shape until Role II's schema) and `checkOutput` (contract rules). `devModel.ts`: stand-in model until Role II's lands.
-- `src/client/`: React UI (cards, hero picker and widgets, quest panel, scope preview with reasons, Apply, undo, error bar, red/green text diff, dark-fantasy theme with `Scenery.tsx`, both conditions via `?condition=baseline|bounded&participant=P01&task=t1|t2`), `AdminPanel.tsx` (`?admin`, researcher setup page), `logger.ts` (stub) and `condition.ts`.
+- `src/client/`: React UI (cards, hero picker and widgets, quest panel, scope preview with reasons, Apply, undo, error bar, red/green text diff, per-card attribution after Apply (`attribution.ts`) with an edited-card-to-overview arrow (`ScopeLink.tsx`), "best party so far" with one-click restore (`bestParty.ts`, `BestParty.tsx`; frontend only, restore is undone by the UI without the backend), dark-fantasy theme with `Scenery.tsx`, both conditions via `?condition=baseline|bounded&participant=P01&task=t1|t2`), `AdminPanel.tsx` (`?admin`, researcher setup page), `logger.ts` (stub) and `condition.ts`.
 - `tests/`: Vitest tests.
 
 Not built yet: the real LLM model adapter, prompts and output schema (Role II), the Groq proxy server and `POST /api/log`, and the real logger (Role IV).
