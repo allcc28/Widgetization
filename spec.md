@@ -266,7 +266,7 @@ and calls `setSession` with them.
 Widgets, layout, undo, error bar, quest and subtitle are identical in both.
 
 **Log instrumentation.** The UI calls `logEvent` for `task_start` (on load), `task_end` (on
-Finish), `card_enter/leave`, `param_preview`, `apply_click`, `apply_result` and `undo_click`. `src/client/logger.ts` is an in-memory
+Finish), `card_enter/leave`, `param_preview`, `apply_click`, `apply_result`, `undo_click` and `restore_best` (a "best party so far" entry restored; no model call). `src/client/logger.ts` is an in-memory
 stub; the study role replaces its internals and keeps its signatures.
 
 ## 6. Validation (backend)

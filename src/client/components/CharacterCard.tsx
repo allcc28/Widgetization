@@ -39,6 +39,8 @@ interface Props {
   previous: CardNode | null;
   /** Why this card is or is not in the closure (shown while an edit is pending). */
   reason: string | null;
+  /** Why this card was rewritten by the last Apply (shown while changes are highlighted). */
+  attribution: string | null;
   /** Baseline with a pending edit: the whole party may change. */
   maybe: boolean;
   /** Classes already used by the other cards: a hero can appear once per party. */
@@ -58,6 +60,7 @@ export function CharacterCard({
   changedFields,
   previous,
   reason,
+  attribution,
   maybe,
   takenClasses,
   locked,
@@ -115,6 +118,7 @@ export function CharacterCard({
       </header>
 
       {reason && <p className="why">{reason}</p>}
+      {attribution && <p className="why why--done">{attribution}</p>}
 
       <dl className="stats">
         <div>
@@ -156,8 +160,8 @@ export function CharacterCard({
                     onChange={() => onEdit({ cardId: id, param: "cls", value: cls })}
                   />
                   <img src={CLASS_PORTRAITS[cls]} alt="" />
-                  <span className="hero__role" aria-hidden="true">
-                    {ROLE_OF_CLASS[cls]}
+                  <span className="hero__name" aria-hidden="true">
+                    {HERO_NAME[cls]}
                   </span>
                 </label>
               );

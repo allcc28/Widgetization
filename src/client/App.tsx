@@ -15,11 +15,15 @@ import {
   type OverviewNode,
   type State,
 } from "../shared/types";
+import { attributionFor, labelOf, PARAM_LABEL } from "./attribution";
+import { partyKey, recordBest } from "./bestParty";
+import { BestParty } from "./components/BestParty";
 import { CharacterCard } from "./components/CharacterCard";
 import { OverviewCard } from "./components/OverviewCard";
 import { HeroRoster } from "./components/HeroRoster";
 import { QuestPanel } from "./components/QuestPanel";
 import { Scenery } from "./components/Scenery";
+import { ScopeLink } from "./components/ScopeLink";
 import {
   getCondition,
   getParticipantId,
@@ -39,17 +43,6 @@ const ERROR_TEXT: Record<ErrorCode, string> = {
   INVALID_EDIT: "That change isn’t allowed (a hero can appear only once in the party).",
 };
 
-function labelOf(state: State, id: NodeId): string {
-  return id === "overview" ? "the overview" : state.nodes[id].derived.name;
-}
-
-const PARAM_LABEL: Record<Edit["param"], string> = {
-  cls: "hero",
-  power: "power",
-  temperament: "temperament",
-  gear: "gear",
-};
-
 function listNames(names: string[]): string {
   if (names.length <= 1) return names.join("");
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
@@ -58,6 +51,9 @@ function listNames(names: string[]): string {
 interface LastChange {
   before: State;
   after: State;
+  /** The edit that was applied, and which nodes the backend reported as changed. */
+  edit: Edit;
+  changed: NodeId[];
 }
 
 export function App() {
@@ -75,6 +71,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [lastChange, setLastChange] = useState<LastChange | null>(null);
+  // The best parties seen so far (frontend only; the backend never sees a restore). The starting
+  // party counts. `preRestore` is what was on screen before the last Restore, so Undo can go back.
+  const [best, setBest] = useState<readonly State[]>(() => [committed]);
+  const [preRestore, setPreRestore] = useState<State | null>(null);
 
   const started = useRef(false);
   useEffect(() => {
@@ -144,8 +144,10 @@ export function App() {
         changed: result.changed,
         offScope: result.changed.filter((id) => !result.affected.includes(id)),
       });
-      setLastChange({ before: committed, after: result.state });
+      setLastChange({ before: committed, after: result.state, edit: pending, changed: result.changed });
       setCommitted(result.state);
+      setBest((b) => recordBest(b, result.state));
+      setPreRestore(null);
       setPending(null);
       setNotice(
         bounded
@@ -171,15 +173,37 @@ export function App() {
 
   function undoLast() {
     logEvent({ type: "undo_click" });
-    const previous = undo();
-    if (previous) setCommitted(previous);
+    if (preRestore) {
+      // A Restore never went through the backend, so its undo is handled here.
+      setCommitted(preRestore);
+      setPreRestore(null);
+    } else {
+      const previous = undo();
+      if (previous) setCommitted(previous);
+    }
     setError(null);
     setNotice(null);
     setLastChange(null);
   }
 
+  /** Bring back a best party as it was: params and text, no model call. Undo reverses it. */
+  function restoreBest(state: State) {
+    const d = state.nodes.overview.derived;
+    logEvent({
+      type: "restore_best",
+      rating: d.rating,
+      requirementsMet: d.requirements.filter((r) => r.met).length,
+    });
+    setPreRestore(committed);
+    setCommitted(state);
+    setPending(null);
+    setError(null);
+    setLastChange(null);
+    setNotice(`Restored ${listNames(CARD_IDS.map((id) => state.nodes[id].derived.name))}.`);
+  }
+
   // Every history change coincides with a state change, so reading it during render is fresh.
-  const undoable = canUndo();
+  const undoable = preRestore !== null || canUndo();
 
   // Why each node is (or is not) in the closure, shown on the cards. Bounded only.
   const whyById = useMemo(
@@ -212,11 +236,30 @@ export function App() {
     showChanges && lastChange ? lastChange.before.nodes[id] : null;
   // Bounded: only the closure is being regenerated. Baseline: everything is.
   const updatingFor = (id: NodeId) => updating && (bounded ? affected.includes(id) : true);
+  // After an Apply, why each rewritten node was rewritten (from the dependency graph, not the model).
+  const attribution = (id: NodeId): string | null =>
+    showChanges && lastChange
+      ? attributionFor(lastChange.before, lastChange.after, lastChange.edit, lastChange.changed, id)
+      : null;
+
+  // The edited card -> overview edge, dashed while previewing (bounded only, since the baseline
+  // previews no scope) and solid after an Apply that changed the overview.
+  const link =
+    pending && bounded
+      ? { from: pending.cardId, phase: "preview" as const, label: `reads ${labelOf(committed, pending.cardId)}` }
+      : showChanges && lastChange && lastChange.changed.includes("overview")
+        ? {
+            from: lastChange.edit.cardId,
+            phase: "done" as const,
+            label: `read ${labelOf(lastChange.after, lastChange.edit.cardId)}`,
+          }
+        : null;
+  const page = useRef<HTMLElement>(null);
 
   return (
     <>
       <Scenery />
-      <main className="page">
+      <main className="page" ref={page}>
       <header className="page__header">
         <h1>Character builder</h1>
         <p className="muted">Adjust a character, then press Apply.</p>
@@ -262,6 +305,13 @@ export function App() {
         onFinish={finishTask}
       />
 
+      <BestParty
+        entries={best}
+        currentKey={partyKey(committed)}
+        disabled={pending !== null || updating || finished}
+        onRestore={restoreBest}
+      />
+
       <HeroRoster party={CARD_IDS.map((id) => ({ id, cls: draft.nodes[id].params.cls }))} />
 
       <section className="grid">
@@ -278,6 +328,7 @@ export function App() {
               updating={updatingFor(id)}
               changedFields={fieldsFor(id)}
               reason={reasonFor(id)}
+              attribution={attribution(id)}
               maybe={maybeFor()}
               previous={previousOf(id) as CardNode | null}
               takenClasses={
@@ -302,8 +353,16 @@ export function App() {
         updating={updatingFor("overview")}
         changedFields={fieldsFor("overview")}
         reason={reasonFor("overview")}
+        attribution={attribution("overview")}
         maybe={maybeFor()}
         previous={previousOf("overview") as OverviewNode | null}
+      />
+
+      <ScopeLink
+        container={page}
+        from={link?.from ?? null}
+        phase={link?.phase ?? "preview"}
+        label={link?.label ?? ""}
       />
 
       <footer className="credits">

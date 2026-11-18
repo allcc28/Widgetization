@@ -275,8 +275,11 @@ interface LogBase {
 | `apply_click` | UI | Apply pressed | `edit` |
 | `apply_result` | UI | the promise from `applyEdit`/`regenerateAll` settles | `ok, latencyMs, affected, changed, offScope, errorCode?` |
 | `undo_click` | UI | Undo pressed | |
+| `restore_best` | UI | Restore pressed on a "best party so far" entry | `rating, requirementsMet` (of the restored party) |
 
 Definitions and rules:
+
+- `restore_best` is frontend only: the restored party is a copy the UI kept, so no `applyEdit`/`regenerateAll` runs and no `apply_result` follows. Undoing a restore fires a plain `undo_click`.
 
 - `offScope` = `changed` minus `affected`, computed once in the UI wrapper (so it is the same for both conditions). Expected `[]` in the bounded condition.
 - **Dwell time** is derived in analysis from `card_enter`/`card_leave` timestamps. Overlapping pairs are summed per card. A card counts as *unaffected* for dwell purposes if it was not in `affected` of the most recent `apply_result`. Dwell before the first Apply is excluded from the "unaffected" measure.
