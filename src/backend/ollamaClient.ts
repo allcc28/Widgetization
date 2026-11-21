@@ -1,6 +1,8 @@
 import { HERO_NAME } from "../shared/heroes";
 import { buildMessages, type GenerationRequest } from "./prompts";
 import { affectedSet } from "../shared/dependencies";
+import { applyParam } from "../shared/applyParam";
+import { withDerived } from "../shared/derived";
 import { CLASSES, ROLES, NODE_IDS, type ErrorCode, type NodeId } from "../shared/types";
 import type { FullPartyOutput } from "./modelOutput";
 
@@ -98,7 +100,7 @@ function invalidIdentity(story: string, abilities: string[], name: string, cls: 
   return abilities.some(value => ROLES.some(role => role.toLowerCase() === value.trim().toLowerCase()));
 }
 
-/** Pass committed state. Makes one model call. The Role III backend owns retries. */
+/** Pass committed state. A rejected swap card gets one isolated repair before the backend retries. */
 export async function generateContent(request: GenerationRequest, signal?: AbortSignal): Promise<GenerationResult> {
   let messages: ReturnType<typeof buildMessages>;
   try {
@@ -114,7 +116,7 @@ export async function generateContent(request: GenerationRequest, signal?: Abort
     draft.nodes[swap.cardId].content = { backstory: "", abilities: [] };
     messages = buildMessages({ ...request, state: draft });
     messages.push({ role: "user", content:
-      `A new hero joins: ${HERO_NAME[swap.value]} the ${swap.value}. For ${swap.cardId}, begin the new backstory with ${HERO_NAME[swap.value]} and invent two named ${swap.value} abilities. Write a party summary consistent with the new roster. Return the requested nodes.` });
+      `A new hero joins: ${HERO_NAME[swap.value]} the ${swap.value}. For ${swap.cardId}, begin the new backstory with ${HERO_NAME[swap.value]} and invent two named ${swap.value} abilities. ${request.mode === "bounded" ? "Write a party summary consistent with the new roster. " : ""}Return the requested nodes.` });
   }
   const powerEdit = request.mode !== "initial" && request.edit.param === "power"
     && request.edit.value !== request.state.nodes[request.edit.cardId].params.power
@@ -141,8 +143,25 @@ export async function generateContent(request: GenerationRequest, signal?: Abort
           !invalidIdentity(backstory, abilities, name, swap.value);
       };
       if (usable(result.nodes[id])) return result;
-      const rejected = () => failure("MODEL_ERROR", "The replacement hero has stale, borrowed, or inconsistent content.");
-      return rejected();
+      const party = withDerived(applyParam(request.state, swap));
+      const { params, derived } = party.nodes[id];
+      const { quest } = party;
+      const repair = await attempt([
+        {
+          role: "system",
+          content: 'Write one RPG hero card in English. Return {"nodes":{"<cardId>":{"content":{"backstory":"...","abilities":["...","..."]}}}} using the supplied cardId. Start the backstory with the hero name and write one sentence about the hero. Give two distinct, short ability names suited to the class.',
+        },
+        {
+          role: "user",
+          content: JSON.stringify({ cardId: id, name, params, derived, quest }),
+        },
+      ], [id], signal);
+      if (!repair.ok) return repair;
+      const card = repair.nodes[id];
+      if (card && usable(card)) {
+        return { ok: true, nodes: { ...result.nodes, [id]: card } };
+      }
+      return failure("MODEL_ERROR", "The replacement hero has stale, borrowed, or inconsistent content.");
     }
     if (!powerEdit) return result;
     const oldCard = request.state.nodes[powerEdit.cardId];

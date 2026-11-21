@@ -22,7 +22,7 @@ const editGuidance =
 const instructions = {
   initial: "Write the initial party descriptions for the supplied heroes and quest.",
   bounded: `Revise only the requested nodes. ${editGuidance} Preserve unrelated details.`,
-  baseline: `Return the entire party after the edit. ${editGuidance} Preserve unrelated details.`,
+  baseline: `Return the entire party after the edit. Reflect the supplied change and preserve unrelated details.`,
 };
 
 /** Pass the committed state from BEFORE the edit. Builds messages without mutating it. */
@@ -54,7 +54,7 @@ export function buildMessages(request: GenerationRequest): PromptMessage[] {
       role: "user",
       content: [
         JSON.stringify({ party: withDerived(party), change, targetIds }),
-        ...(change ? [
+        ...(change && request.mode === "bounded" ? [
           `Edit: ${party.nodes[change.cardId].derived.name}'s ${change.param} changed from ${change.from} to ${change.to}.`,
           `Current party assessment: ${withDerived(party).nodes.overview.derived.findings.join(" ")}`,
           "Use this edit to write a new backstory sentence showing how the hero now fights.",
