@@ -5,6 +5,7 @@ export const ollamaModel: ModelFn = async (request, signal) => {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "X-Trace-Id": request.traceId ?? "",
     },
     signal,
     body: JSON.stringify({
@@ -22,7 +23,8 @@ export const ollamaModel: ModelFn = async (request, signal) => {
         ? result.error
         : result.error?.message;
 
-    throw new Error(message ?? `Generation failed (HTTP ${response.status}).`);
+    // Keep the server's structured code; api.ts allowlists it.
+    throw Object.assign(new Error(message ?? `Generation failed (HTTP ${response.status}).`), { code: result.error?.code });
   }
 
   return JSON.stringify({ nodes: result.nodes });
