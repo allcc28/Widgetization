@@ -100,8 +100,12 @@ function invalidIdentity(story: string, abilities: string[], name: string, cls: 
   return abilities.some(value => ROLES.some(role => role.toLowerCase() === value.trim().toLowerCase()));
 }
 
+/** Dev-only structured log sink: ids, codes and timings only, never prompts or content. */
+export type GenerationLog = (event: string, fields?: Record<string, unknown>) => void;
+const codeOf = (r: GenerationResult) => (r.ok ? {} : { code: r.error.code });
+
 /** Pass committed state. A rejected swap card gets one isolated repair before the backend retries. */
-export async function generateContent(request: GenerationRequest, signal?: AbortSignal): Promise<GenerationResult> {
+export async function generateContent(request: GenerationRequest, signal?: AbortSignal, log: GenerationLog = () => {}): Promise<GenerationResult> {
   let messages: ReturnType<typeof buildMessages>;
   try {
     messages = buildMessages(request);
@@ -123,7 +127,9 @@ export async function generateContent(request: GenerationRequest, signal?: Abort
     ? request.edit : null;
 
   {
+    let t = Date.now();
     const result = await attempt(messages, ids, signal);
+    log("ollama.main", { ok: result.ok, ...codeOf(result), ms: Date.now() - t });
     if (!result.ok) return result;
     if (swap) {
       const id = swap.cardId;
@@ -143,6 +149,8 @@ export async function generateContent(request: GenerationRequest, signal?: Abort
           !invalidIdentity(backstory, abilities, name, swap.value);
       };
       if (usable(result.nodes[id])) return result;
+      log("identity.fail", { card: id, kind: "swap" });
+      t = Date.now();
       const party = withDerived(applyParam(request.state, swap));
       const { params, derived } = party.nodes[id];
       const { quest } = party;
@@ -156,6 +164,7 @@ export async function generateContent(request: GenerationRequest, signal?: Abort
           content: JSON.stringify({ cardId: id, name, params, derived, quest }),
         },
       ], [id], signal);
+      log("repair.result", { ok: repair.ok, ...codeOf(repair), usable: repair.ok && usable(repair.nodes[id]), ms: Date.now() - t });
       if (!repair.ok) return repair;
       const card = repair.nodes[id];
       if (card && usable(card)) {
@@ -176,5 +185,6 @@ export async function generateContent(request: GenerationRequest, signal?: Abort
         !invalidIdentity(generated.backstory, generated.abilities, oldCard.derived.name, oldCard.params.cls)) return result;
 
   }
+  log("identity.fail", { card: powerEdit?.cardId, kind: "power" });
   return failure("MODEL_ERROR", "Power edit failed: generated content conflicts with the edited hero identity or copies a teammate.");
 }

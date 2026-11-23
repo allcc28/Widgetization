@@ -5,11 +5,22 @@ import react from "@vitejs/plugin-react";
 import { generateContent } from "./src/backend/ollamaClient";
 import type { GenerationRequest } from "./src/backend/prompts";
 
+/** Dev-only: one line per event, `[widget] <applyId>#<attempt> <event> {fields}`. */
+function print(id: unknown, event: unknown, fields: Record<string, unknown>): void {
+  console.log(`[widget] ${String(id || "-")} ${String(event)} ${JSON.stringify(fields)}`);
+}
+
 function localGenerationApi(): Plugin {
   return {
     name: "local-generation-api",
 
     configureServer(server) {
+      // Events from src/backend/api.ts, which runs in the browser.
+      server.ws.on("widget:log", (data: Record<string, unknown>) => {
+        const { id, event, ...fields } = data ?? {};
+        print(id, event, fields);
+      });
+
       server.middlewares.use("/api/generate", async (req, res) => {
         res.setHeader("Content-Type", "application/json; charset=utf-8");
 
@@ -52,15 +63,26 @@ function localGenerationApi(): Plugin {
             return;
           }
 
-          const result = await generateContent(input as GenerationRequest, controller.signal);
-          if (controller.signal.aborted || res.destroyed) return;
+          const trace = req.headers["x-trace-id"];
+          const log = (event: string, fields: Record<string, unknown> = {}) => print(trace, event, fields);
+          const t = Date.now();
+          log("server.request", { mode: input.mode, card: input.edit?.cardId, param: input.edit?.param });
+          const result = await generateContent(input as GenerationRequest, controller.signal, log);
+          if (controller.signal.aborted || res.destroyed) {
+            log("server.aborted", { ms: Date.now() - t });
+            return;
+          }
           res.statusCode = result.ok ? 200
             : result.error.code === "INVALID_EDIT" ? 400
             : result.error.code === "TIMEOUT" ? 504
             : 502;
+          log("server.result", { status: res.statusCode, ok: result.ok, ...(result.ok ? {} : { code: result.error.code }), ms: Date.now() - t });
           res.end(JSON.stringify(result));
         } catch (error) {
-          if (controller.signal.aborted || res.destroyed) return;
+          if (controller.signal.aborted || res.destroyed) {
+            print(req.headers["x-trace-id"], "server.aborted", {});
+            return;
+          }
           res.statusCode = error instanceof SyntaxError ? 400 : 500;
           res.end(JSON.stringify({
             error: error instanceof SyntaxError

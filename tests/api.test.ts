@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyEdit, canUndo, regenerateAll, resetHistory, setModel, undo } from "../src/backend/api";
+import { ollamaModel } from "../src/backend/ollamaAdapter";
 import { sampleState } from "../src/shared/sampleState";
 import type { Edit, UpdateResult } from "../src/shared/types";
 import { answer, scripted, tweak } from "./scriptedModel";
@@ -14,6 +15,7 @@ function use(...steps: Parameters<typeof scripted>) {
 }
 
 beforeEach(() => resetHistory());
+afterEach(() => vi.unstubAllGlobals());
 
 describe("applyEdit (bounded)", () => {
   it("editing card_2 leaves card_1 and card_3 deep-equal; changed is within affected", async () => {
@@ -58,10 +60,37 @@ describe("applyEdit (bounded)", () => {
     expect(m.calls).toHaveLength(2);
   });
 
+  it("tags each model call with one apply id and its attempt number", async () => {
+    const m = use("not json", answer);
+    await applyEdit(sampleState, edit);
+    const [a, b] = m.calls.map((c) => c.traceId);
+    expect(a).toMatch(/^[0-9a-f]{8}#1$/);
+    expect(b).toBe(a!.replace("#1", "#2"));
+  });
+
   it("maps a thrown error to MODEL_ERROR", async () => {
     use(new Error("network down"));
     const r = await applyEdit(sampleState, edit);
     expect(!r.ok && r.error.code).toBe("MODEL_ERROR");
+  });
+
+  // Through the real adapter: the server's structured code survives, anything unknown is MODEL_ERROR.
+  it.each([
+    [504, { ok: false, error: { code: "TIMEOUT", message: "slow" } }, "TIMEOUT"],
+    [502, { ok: false, error: { code: "SCHEMA_MISMATCH", message: "bad" } }, "SCHEMA_MISMATCH"],
+    [502, { ok: false, error: { code: "NOT_A_CODE", message: "?" } }, "MODEL_ERROR"],
+    [500, { error: "Generation request failed." }, "MODEL_ERROR"],
+  ])("adapter HTTP %i keeps a known error code (%j -> %s); state and undo untouched", async (status, body, code) => {
+    const send = vi.fn<typeof fetch>(async () => Response.json(body, { status }));
+    vi.stubGlobal("fetch", send);
+    setModel(ollamaModel, 50);
+    const before = structuredClone(sampleState);
+    const r = await applyEdit(sampleState, edit);
+    expect(!r.ok && r.error.code).toBe(code);
+    expect(r.state).toBe(sampleState);
+    expect(sampleState).toEqual(before);
+    expect(send).toHaveBeenCalledTimes(2); // both attempts failed
+    expect(canUndo()).toBe(false);
   });
 
   it("maps a hanging model to TIMEOUT, latency covering both attempts", async () => {
